@@ -31,6 +31,9 @@ This project is built on top of the original work by **BobJohnson24** (author of
 This package has been verified and tested using the following pre-quantized INT4/INT8 mixed-precision model:
 - **Krea2 Turbo INT4**: [krea2_turbo_convrot_int4_fast.safetensors](https://huggingface.co/comfyanonymous/int4_tests/blob/main/split_files/diffusion_models/krea2_turbo_convrot_int4_fast.safetensors)
 
+> [!NOTE]
+> The **first generation run** will take some additional time during model initialization to compile and set up the custom operators. Subsequent generations will run significantly faster.
+
 ---
 
 ## Installation & Setup
