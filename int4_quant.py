@@ -180,6 +180,13 @@ class Int4Ops(manual_cast):
             weight_tensor = state_dict.pop(weight_key, None)
             bias_tensor = state_dict.pop(bias_key, None)
 
+            fp8_types = []
+            for tname in ("float8_e4m3fn", "float8_e5m2"):
+                if hasattr(torch, tname):
+                    fp8_types.append(getattr(torch, tname))
+            if weight_tensor is not None and weight_tensor.dtype in fp8_types:
+                weight_tensor = weight_tensor.to(dtype=torch.bfloat16)
+
             quant_conf_parsed = None
             quant_format = "convrot_w4a4"
             if comfy_quant_tensor is not None:
