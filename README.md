@@ -26,6 +26,13 @@ This project is built on top of the original work by **BobJohnson24** (author of
 
 ---
 
+## Verified Models
+
+This package has been verified and tested using the following pre-quantized INT4/INT8 mixed-precision model:
+- **Krea2 Turbo INT4**: [krea2_turbo_convrot_int4_fast.safetensors](https://huggingface.co/comfyanonymous/int4_tests/blob/main/split_files/diffusion_models/krea2_turbo_convrot_int4_fast.safetensors)
+
+---
+
 ## Installation & Setup
 
 1. Clone or copy this repository into your ComfyUI `custom_nodes` directory:
