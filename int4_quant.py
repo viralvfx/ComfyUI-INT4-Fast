@@ -26,6 +26,11 @@ try:
 except Exception:
     pass
 
+fp8_types = []
+for tname in ("float8_e4m3fn", "float8_e5m2"):
+    if hasattr(torch, tname):
+        fp8_types.append(getattr(torch, tname))
+
 class Int4Ops(manual_cast):
     excluded_names = []
     dynamic_quantize = False
@@ -101,8 +106,15 @@ class Int4Ops(manual_cast):
             if device is None:
                 device = torch.device("cuda") if torch.cuda.is_available() else self.weight.device
 
-            weight_tensor = self.weight.detach()
-            
+            weight_tensor = self.weight
+            if hasattr(weight_tensor, "to"):
+                weight_tensor = weight_tensor.to(device=device)
+            else:
+                weight_tensor = weight_tensor.detach()
+
+            if pending.get("cast_fp8") or weight_tensor.dtype in fp8_types:
+                weight_tensor = weight_tensor.to(dtype=torch.bfloat16)
+
             if pending.get("lora_patches"):
                 temp_dtype = comfy.model_management.lora_compute_dtype(device)
                 w_temp = weight_tensor.to(device=device, dtype=temp_dtype)
@@ -180,12 +192,7 @@ class Int4Ops(manual_cast):
             weight_tensor = state_dict.pop(weight_key, None)
             bias_tensor = state_dict.pop(bias_key, None)
 
-            fp8_types = []
-            for tname in ("float8_e4m3fn", "float8_e5m2"):
-                if hasattr(torch, tname):
-                    fp8_types.append(getattr(torch, tname))
-            if weight_tensor is not None and weight_tensor.dtype in fp8_types:
-                weight_tensor = weight_tensor.to(dtype=torch.bfloat16)
+            is_fp8 = weight_tensor is not None and weight_tensor.dtype in fp8_types
 
             quant_conf_parsed = None
             quant_format = "convrot_w4a4"
@@ -219,8 +226,17 @@ class Int4Ops(manual_cast):
                 device = getattr(Int4Ops, "dynamic_load_device", None)
                 if device is None:
                     device = weight_tensor.device
+
+                if hasattr(weight_tensor, "to"):
+                    weight_tensor_resolved = weight_tensor.to(device=device)
+                else:
+                    weight_tensor_resolved = weight_tensor
+
+                if is_fp8 or weight_tensor_resolved.dtype in fp8_types:
+                    weight_tensor_resolved = weight_tensor_resolved.to(dtype=torch.bfloat16)
+
                 temp_dtype = comfy.model_management.lora_compute_dtype(device)
-                w_temp = weight_tensor.to(device=device, dtype=temp_dtype)
+                w_temp = weight_tensor_resolved.to(device=device, dtype=temp_dtype)
                 
                 formatted = []
                 for patch in pending_weight_lora_patches:
@@ -234,6 +250,7 @@ class Int4Ops(manual_cast):
                 if not hasattr(Int4Ops, 'applied_lora_patches'):
                     Int4Ops.applied_lora_patches = set()
                 Int4Ops.applied_lora_patches.add(normalize_key(weight_key))
+                is_fp8 = False
 
             if bias_tensor is not None:
                 bias_patches = Int4Ops.lora_patches.get(normalize_key(bias_key))
@@ -309,7 +326,7 @@ class Int4Ops(manual_cast):
                         q_data = weight_tensor._qdata if isinstance(weight_tensor, QuantizedTensor) else weight_tensor
                         q_weight = QuantizedTensor(q_data, "TensorCoreConvRotW4A4Layout", params)
                         self.weight = nn.Parameter(q_weight, requires_grad=False)
-                elif weight_tensor.dtype in (torch.float16, torch.bfloat16, torch.float32):
+                elif weight_tensor.dtype in (torch.float16, torch.bfloat16, torch.float32) or is_fp8:
                     is_excluded = any(ex in prefix for ex in Int4Ops.excluded_names)
                     is_dim1 = self.in_features == 1 or self.out_features == 1 or weight_tensor.ndim == 1
                     should_quantize = not (is_excluded or is_dim1 or not Int4Ops.dynamic_quantize)
@@ -329,6 +346,7 @@ class Int4Ops(manual_cast):
                             "convrot_groupsize": getattr(Int4Ops, "convrot_groupsize", 256),
                             "quant_group_size": getattr(Int4Ops, "quant_group_size", 64),
                             "linear_dtype": getattr(Int4Ops, "linear_dtype", "int4"),
+                            "cast_fp8": is_fp8,
                         }
                         if pending_weight_lora_patches:
                             if not hasattr(Int4Ops, 'applied_lora_patches'):
@@ -336,13 +354,18 @@ class Int4Ops(manual_cast):
                             Int4Ops.applied_lora_patches.add(normalize_key(weight_key))
                     elif not should_quantize:
                         self._is_quantized = False
+                        if is_fp8 and hasattr(weight_tensor, "to"):
+                            weight_tensor = weight_tensor.to(dtype=torch.bfloat16)
                         self.weight = nn.Parameter(source_tensor(weight_tensor), requires_grad=False)
                     else:
                         device = getattr(Int4Ops, "dynamic_load_device", None)
                         if device is None:
                             device = torch.device("cuda") if torch.cuda.is_available() else weight_tensor.device
                         
-                        w_gpu = weight_tensor.to(device).float()
+                        if hasattr(weight_tensor, "to"):
+                            w_gpu = weight_tensor.to(device=device).to(dtype=torch.float32)
+                        else:
+                            w_gpu = weight_tensor.to(device).float()
                         stochastic_rounding = 1 if getattr(Int4Ops, "lora_mode", "None") == "Stochastic" else 0
                         
                         qdata, params = TensorCoreConvRotW4A4Layout.quantize(
