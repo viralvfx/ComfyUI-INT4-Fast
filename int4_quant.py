@@ -107,6 +107,9 @@ class Int4Ops(manual_cast):
                 device = torch.device("cuda") if torch.cuda.is_available() else self.weight.device
 
             weight_tensor = self.weight
+            if isinstance(weight_tensor, QuantizedTensor) or (hasattr(weight_tensor, "_qdata") and hasattr(weight_tensor, "_params")):
+                weight_tensor = weight_tensor.dequantize()
+
             if hasattr(weight_tensor, "to"):
                 weight_tensor = weight_tensor.to(device=device)
             else:
@@ -231,6 +234,9 @@ class Int4Ops(manual_cast):
                     weight_tensor_resolved = weight_tensor.to(device=device)
                 else:
                     weight_tensor_resolved = weight_tensor
+
+                if isinstance(weight_tensor_resolved, QuantizedTensor) or (hasattr(weight_tensor_resolved, "_qdata") and hasattr(weight_tensor_resolved, "_params")):
+                    weight_tensor_resolved = weight_tensor_resolved.dequantize()
 
                 if is_fp8 or weight_tensor_resolved.dtype in fp8_types:
                     weight_tensor_resolved = weight_tensor_resolved.to(dtype=torch.bfloat16)
