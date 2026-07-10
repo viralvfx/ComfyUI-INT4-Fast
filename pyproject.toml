@@ -1,0 +1,19 @@
+[project]
+name = "int4-fast"
+description = "This node speeds up Flux-based models in ComfyUI by using INT4 (W4A4) quantization on RTX 30 and 40 series cards, delivering faster inference and lower VRAM usage."
+version = "1.0.1"
+license = {file = "LICENSE"} 
+classifiers = [
+    "Operating System :: OS Independent",
+    "Environment :: GPU :: NVIDIA CUDA",
+]
+
+[project.urls]
+Repository = "https://github.com/viralvfx/ComfyUI-INT4-Fast"
+"Bug Tracker" = "https://github.com/viralvfx/ComfyUI-INT4-Fast/issues"
+
+[tool.comfy]
+PublisherId = "viralvfx"
+DisplayName = "ComfyUI-INT4-Fast"
+Icon = ""
+includes = []
