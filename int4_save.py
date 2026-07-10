@@ -185,16 +185,23 @@ class INT4ModelSave:
             requires_grad = tensor.is_floating_point() or tensor.is_complex()
             return torch.nn.Parameter.__new__(cls, tensor, requires_grad=requires_grad)
 
-        original_state_dict = model.model.state_dict
+        original_state_dict_for_saving = model.state_dict_for_saving
 
-        def custom_state_dict(*args, **kwargs):
-            sd = original_state_dict(*args, **kwargs)
+        def custom_state_dict_for_saving(*args, **kwargs):
+            sd = original_state_dict_for_saving(*args, **kwargs)
             new_sd = {}
             for k, v in sd.items():
                 if isinstance(v, QuantizedTensor) or (hasattr(v, "_qdata") and hasattr(v, "_params")):
                     new_sd[k] = v._qdata.cpu()
                     scale_key = k.rsplit('.', 1)[0] + ".weight_scale"
                     scale_val = v._params.scale
+                    if isinstance(scale_val, torch.Tensor):
+                        scale_val = scale_val.reshape(-1).cpu()
+                    new_sd[scale_key] = scale_val
+                elif hasattr(v, "weight") and (isinstance(v.weight, QuantizedTensor) or (hasattr(v.weight, "_qdata") and hasattr(v.weight, "_params"))):
+                    new_sd[k] = v.weight._qdata.cpu()
+                    scale_key = k.rsplit('.', 1)[0] + ".weight_scale"
+                    scale_val = v.weight._params.scale
                     if isinstance(scale_val, torch.Tensor):
                         scale_val = scale_val.reshape(-1).cpu()
                     new_sd[scale_key] = scale_val
@@ -209,10 +216,10 @@ class INT4ModelSave:
             model._int4_save_materialized_lora = True
             comfy.model_patcher.LazyCastingParam.__new__ = staticmethod(lazy_casting_param_new)
             comfy.model_patcher.LazyCastingParamPiece.__new__ = staticmethod(lazy_casting_param_piece_new)
-            model.model.state_dict = custom_state_dict
+            model.state_dict_for_saving = custom_state_dict_for_saving
             comfy.sd.save_checkpoint(output_checkpoint, model, metadata=metadata, extra_keys=extra_keys)
         finally:
-            model.model.state_dict = original_state_dict
+            model.state_dict_for_saving = original_state_dict_for_saving
             comfy.model_patcher.LazyCastingParam.__new__ = original_lazy_new
             comfy.model_patcher.LazyCastingParamPiece.__new__ = original_lazy_piece_new
             if had_save_flag:
