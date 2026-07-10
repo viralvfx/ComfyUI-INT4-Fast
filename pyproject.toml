@@ -1,7 +1,7 @@
 [project]
 name = "int4-fast"
 description = "This node speeds up Flux-based models in ComfyUI by using INT4 (W4A4) quantization on RTX 30 and 40 series cards, delivering faster inference and lower VRAM usage."
-version = "1.0.3"
+version = "1.0.4"
 license = {file = "LICENSE"} 
 classifiers = [
     "Operating System :: OS Independent",

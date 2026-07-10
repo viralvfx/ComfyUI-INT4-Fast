@@ -188,6 +188,7 @@ class INT4ModelSave:
         original_state_dict_for_saving = model.state_dict_for_saving
 
         def custom_state_dict_for_saving(*args, **kwargs):
+            from comfy.quant_ops import QuantizedTensor
             sd = original_state_dict_for_saving(*args, **kwargs)
             new_sd = {}
             for k, v in sd.items():
