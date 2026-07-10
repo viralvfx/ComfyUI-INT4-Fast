@@ -45,7 +45,9 @@ cd ComfyUI/custom_nodes/
 git clone https://github.com/viralvfx/ComfyUI-INT4-Fast.git
 ```
 
-Make sure you have `comfy-kitchen` installed, as it provides the core `QuantizedTensor` execution layouts.
+Make sure you have:
+1. **ComfyUI updated to the latest version**.
+2. **`comfy-kitchen` installed**, as it provides the core `QuantizedTensor` execution layouts.
 
 ---
 
