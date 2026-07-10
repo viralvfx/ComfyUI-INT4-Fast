@@ -38,11 +38,14 @@ This package has been verified and tested using the following pre-quantized INT4
 
 ## Installation & Setup
 
-1. Clone or copy this repository into your ComfyUI `custom_nodes` directory:
-   ```bash
-   custom_nodes/ComfyUI-INT4-Fast/
-   ```
-2. Make sure you have `comfy-kitchen` installed, as it provides the core `QuantizedTensor` execution layouts.
+To install this custom node, navigate to your ComfyUI `custom_nodes` directory and clone the repository:
+
+```bash
+cd ComfyUI/custom_nodes/
+git clone https://github.com/viralvfx/ComfyUI-INT4-Fast.git
+```
+
+Make sure you have `comfy-kitchen` installed, as it provides the core `QuantizedTensor` execution layouts.
 
 ---
 
